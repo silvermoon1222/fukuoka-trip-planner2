@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>福岡 Solo Trip 行程規劃助手 (iPhone 優化版)</title>
+    <title>福岡 Solo Trip 行程規劃助手 (搜尋優化版)</title>
     <style>
         :root {
             --color-nature: #437055;
@@ -29,6 +29,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* 頂部固定區域 */
         header {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
@@ -36,12 +37,38 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            padding: 16px;
-            text-align: center;
+            padding: 14px 16px;
             border-bottom: 1px solid #e5e5ea;
         }
         
-        header h1 { font-size: 18px; margin: 0 0 10px 0; font-weight: 600; }
+        header h1 { font-size: 18px; margin: 0 0 10px 0; font-weight: 600; text-align: center; }
+
+        /* 🔍 新增：iOS 風格搜尋欄 */
+        .search-container {
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px 10px 36px;
+            font-size: 14px;
+            border-radius: 10px;
+            border: none;
+            background-color: #e3e3e9;
+            color: #000;
+            outline: none;
+        }
+        .search-input::placeholder { color: #8e8e93; }
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8e8e93;
+            font-size: 14px;
+            pointer-events: none;
+        }
 
         /* 分類標籤滑動條 */
         .filter-container {
@@ -73,7 +100,7 @@
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-        /* 響應式主佈局：電腦網頁並排，iPhone 垂直單欄 */
+        /* 響應式主佈局 */
         .main-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -90,13 +117,13 @@
             border-radius: 12px;
             padding: 16px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            max-height: 400px;
+            max-height: 420px;
             overflow-y: auto;
         }
 
         .region-section { margin-bottom: 20px; }
         .region-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             color: #8e8e93;
             margin-bottom: 10px;
@@ -105,7 +132,7 @@
 
         .spot-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
 
-        /* 景點卡片：全面加大，方便手機手指點擊 */
+        /* 景點卡片 */
         .spot-card {
             background: #ffffff;
             border: 1px solid #e5e5ea;
@@ -126,16 +153,18 @@
         /* 手機版快速分派按鈕 */
         .add-to-day-select {
             margin-top: 8px;
-            padding: 6px;
-            font-size: 12px;
-            border-radius: 6px;
+            padding: 8px;
+            font-size: 13px;
+            border-radius: 8px;
             border: 1px solid #007aff;
             background: #fff;
             color: #007aff;
             width: 100%;
+            outline: none;
+            -webkit-appearance: none; /* 確保 iOS 樣式一致 */
         }
 
-        /* 交通條優化 */
+        /* 交通條 */
         .transit-container {
             margin: 6px 0;
             border-radius: 8px;
@@ -201,7 +230,7 @@
         /* 移除按鈕 */
         .remove-btn {
             background: #ff3b30; color: white; border: none; border-radius: 4px;
-            padding: 4px 8px; font-size: 11px; align-self: flex-end; margin-top: 5px;
+            padding: 6px 12px; font-size: 12px; align-self: flex-end; margin-top: 5px;
         }
     </style>
 </head>
@@ -209,15 +238,21 @@
 
     <header>
         <h1>福岡 Solo Trip 規劃助手</h1>
+        
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-box" class="search-input" placeholder="搜尋景點名稱、地區或標籤 (例如: 小倉)" oninput="handleSearchAndFilter()">
+        </div>
+
         <div class="filter-container">
-            <div class="filter-badge active" onclick="filterTag('全部')">全部</div>
-            <div class="filter-badge" onclick="filterTag('自然')"><span class="dot" style="background-color: var(--color-nature)"></span>自然</div>
-            <div class="filter-badge" onclick="filterTag('歷史')"><span class="dot" style="background-color: var(--color-history)"></span>歷史</div>
-            <div class="filter-badge" onclick="filterTag('購物')"><span class="dot" style="background-color: var(--color-shopping)"></span>購物</div>
-            <div class="filter-badge" onclick="filterTag('美食')"><span class="dot" style="background-color: var(--color-food)"></span>美食</div>
-            <div class="filter-badge" onclick="filterTag('文化')"><span class="dot" style="background-color: var(--color-culture)"></span>文化</div>
-            <div class="filter-badge" onclick="filterTag('溫泉')"><span class="dot" style="background-color: var(--color-hotspring)"></span>溫泉</div>
-            <div class="filter-badge" onclick="filterTag('地標')"><span class="dot" style="background-color: var(--color-landmark)"></span>地標</div>
+            <div class="filter-badge active" id="tag-all" onclick="selectTag('全部')">全部</div>
+            <div class="filter-badge" onclick="selectTag('自然')"><span class="dot" style="background-color: var(--color-nature)"></span>自然</div>
+            <div class="filter-badge" onclick="selectTag('歷史')"><span class="dot" style="background-color: var(--color-history)"></span>歷史</div>
+            <div class="filter-badge" onclick="selectTag('購物')"><span class="dot" style="background-color: var(--color-shopping)"></span>購物</div>
+            <div class="filter-badge" onclick="selectTag('美食')"><span class="dot" style="background-color: var(--color-food)"></span>美食</div>
+            <div class="filter-badge" onclick="selectTag('文化')"><span class="dot" style="background-color: var(--color-culture)"></span>文化</div>
+            <div class="filter-badge" onclick="selectTag('溫泉')"><span class="dot" style="background-color: var(--color-hotspring)"></span>溫泉</div>
+            <div class="filter-badge" onclick="selectTag('地標')"><span class="dot" style="background-color: var(--color-landmark)"></span>地標</div>
         </div>
     </header>
 
@@ -233,7 +268,7 @@
     <div class="itinerary-board"></div>
 
     <script>
-        // 核心完整景點資料庫（包含你追加的所有私房景點）
+        // 核心景點資料庫
         const spotsData = [
             { id: "spot1", name: "大濠公園", region: "Fukuoka", tag: "自然", color: "var(--color-nature)", query: "Ohori Park" },
             { id: "spot2", name: "天神地下街", region: "Fukuoka", tag: "購物", color: "var(--color-shopping)", query: "Tenjin Underground Shopping Mall" },
@@ -262,7 +297,7 @@
             { id: "spot21", name: "別府地獄溫泉", region: "Oita", tag: "溫泉", color: "var(--color-hotspring)", query: "Sea Hell, Beppu" }
         ];
 
-        // 核心公共大眾運輸交通最短時間矩陣
+        // 核心大眾運輸矩陣
         const transitMatrix = {
             "spot1_spot2": { time: 10, routes: [{ type: "🚇 地鐵機場線", detail: "10分", steps: "大濠公園直達天神。" }] },
             "spot2_spot6": { time: 15, routes: [{ type: "🚌 西鐵巴士", detail: "15分", steps: "天神至博多運河城。" }] },
@@ -288,8 +323,8 @@
         const regionNames = { Fukuoka: "福岡市區 & 購物", Uminonakamichi: "海之中道水族", Dazaifu: "太宰府/柳川/浮羽", Itoshima: "系島海岸海鮮區", Kitakyushu: "北九州 (小倉/門司港)", Oita: "由布院/別府溫泉" };
         const daysConfig = [{ day: 1, date: "9月26日" }, { day: 2, date: "9月27日" }, { day: 3, date: "9月28日" }, { day: 4, date: "9月29日" }, { day: 5, date: "9月30日" }, { day: 6, date: "10月1日" }, { day: 7, date: "10月2日" }];
 
-        // 行程管理狀態庫
         let assignedSpots = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+        let currentSelectedTag = '全部';
 
         function focusMapToSpot(spotName, queryStr) {
             document.getElementById('google-map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(queryStr)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
@@ -321,16 +356,36 @@
             });
         }
 
-        function renderSpots(filterTagStr = '全部') {
+        // 🔍 修改：結合關鍵字搜尋與分類標籤的過濾器
+        function handleSearchAndFilter() {
+            const keyword = document.getElementById('search-box').value.toLowerCase().trim();
             const panel = document.getElementById('spots-panel');
             panel.innerHTML = '';
-            const groups = { Fukuoka: [], Uminonakamichi: [], Dazaifu: [], Itoshima: [], Kitakyushu: [], Oita: [] };
             
+            const groups = { Fukuoka: [], Uminonakamichi: [], Dazaifu: [], Itoshima: [], Kitakyushu: [], Oita: [] };
+            let hasResults = false;
+
             spotsData.forEach(spot => {
-                if (filterTagStr === '全部' || spot.tag === filterTagStr) {
+                // 檢查分類標籤是否符合
+                const matchesTag = (currentSelectedTag === '全部' || spot.tag === currentSelectedTag);
+                
+                // 檢查搜尋關鍵字是否符合 (比對名稱、英文Query、區域或標籤)
+                const matchesKeyword = !keyword || 
+                                       spot.name.toLowerCase().includes(keyword) || 
+                                       spot.query.toLowerCase().includes(keyword) ||
+                                       regionNames[spot.region].toLowerCase().includes(keyword) ||
+                                       spot.tag.toLowerCase().includes(keyword);
+
+                if (matchesTag && matchesKeyword) {
                     groups[spot.region].push(spot);
+                    hasResults = true;
                 }
             });
+
+            if (!hasResults) {
+                panel.innerHTML = `<div style="color: #8e8e93; text-align: center; padding: 30px 0; font-size: 14px;">❌ 找不到符合的景點，換個關鍵字試試看吧！</div>`;
+                return;
+            }
 
             for (const region in groups) {
                 if (groups[region].length === 0) continue;
@@ -360,11 +415,20 @@
             }
         }
 
+        function selectTag(tagStr) {
+            currentSelectedTag = tagStr;
+            document.querySelectorAll('.filter-badge').forEach(badge => {
+                badge.classList.remove('active');
+                if(badge.innerText.includes(tagStr)) badge.classList.add('active');
+            });
+            handleSearchAndFilter();
+        }
+
         function addSpotToDay(spotId, selectEl) {
             const day = selectEl.value;
             if (!day) return;
             assignedSpots[day].push(spotId);
-            selectEl.value = ""; // 重設
+            selectEl.value = ""; 
             renderDaySchedule(day);
         }
 
@@ -390,7 +454,6 @@
                 const spot = spotsData.find(s => s.id === id);
                 if (!spot) return;
 
-                // 景點小卡
                 const card = document.createElement('div');
                 card.className = 'spot-card';
                 card.innerHTML = `
@@ -402,7 +465,6 @@
                 `;
                 zone.appendChild(card);
 
-                // 計算與下一個景點的交通
                 if (index < spotIds.length - 1) {
                     const nextSpotId = spotIds[index + 1];
                     const nextSpot = spotsData.find(s => s.id === nextSpotId);
@@ -430,7 +492,6 @@
                     
                     zone.appendChild(transitContainer);
 
-                    // 手機點擊展開交通細節與連動導航地圖
                     setTimeout(() => {
                         document.getElementById(`bar-${day}-${index}`).addEventListener('click', function() {
                             const details = document.getElementById(`details-${day}-${index}`);
@@ -445,17 +506,9 @@
             document.getElementById(`time-day-${day}`).innerText = `⏱️ ${(totalMinutes / 60).toFixed(1)} 小時`;
         }
 
-        function filterTag(tagStr) {
-            document.querySelectorAll('.filter-badge').forEach(badge => {
-                badge.classList.remove('active');
-                if(badge.innerText.includes(tagStr)) badge.classList.add('active');
-            });
-            renderSpots(tagStr);
-        }
-
         window.onload = function() {
             initItineraryBoard();
-            renderSpots();
+            handleSearchAndFilter(); // 初始化載入全部景點
         };
     </script>
 </body>
