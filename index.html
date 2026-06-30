@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>福岡 Solo Trip 行程規劃助手 (搜尋優化版)</title>
+    <title>福岡 Solo Trip 行程規劃助手</title>
     <style>
         :root {
             --color-nature: #437055;
@@ -16,7 +16,7 @@
             --color-aquarium: #1c7ed6;
             --color-landmark: #e8590c;
             --color-hotspring: #d6336c;
-            --bg-main: #f2f2f7; /* iOS 系統背景色 */
+            --bg-main: #f2f2f7; 
         }
 
         body {
@@ -29,7 +29,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* 頂部固定區域 */
         header {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
@@ -43,7 +42,6 @@
         
         header h1 { font-size: 18px; margin: 0 0 10px 0; font-weight: 600; text-align: center; }
 
-        /* 🔍 新增：iOS 風格搜尋欄 */
         .search-container {
             margin-bottom: 12px;
             position: relative;
@@ -70,7 +68,6 @@
             pointer-events: none;
         }
 
-        /* 分類標籤滑動條 */
         .filter-container {
             display: flex;
             gap: 8px;
@@ -100,7 +97,6 @@
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-        /* 響應式主佈局 */
         .main-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -132,25 +128,25 @@
 
         .spot-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
 
-        /* 景點卡片 */
         .spot-card {
             background: #ffffff;
             border: 1px solid #e5e5ea;
             padding: 14px;
             border-radius: 10px;
-            cursor: pointer;
+            cursor: grab;
             display: flex;
             flex-direction: column;
             gap: 6px;
             position: relative;
+            user-select: none;
         }
-        .spot-card:active { background-color: #f2f2f7; }
+        .spot-card:active { cursor: grabbing; background-color: #f2f2f7; }
+        .spot-card.dragging { opacity: 0.4; border: 2px dashed #007aff; }
         
         .spot-header { display: flex; justify-content: space-between; align-items: center; }
         .spot-name { font-weight: 600; font-size: 15px; color: #000; }
         .spot-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: white; }
 
-        /* 手機版快速分派按鈕 */
         .add-to-day-select {
             margin-top: 8px;
             padding: 8px;
@@ -161,10 +157,10 @@
             color: #007aff;
             width: 100%;
             outline: none;
-            -webkit-appearance: none; /* 確保 iOS 樣式一致 */
+            -webkit-appearance: none;
         }
 
-        /* 交通條 */
+        /* 交通區塊 */
         .transit-container {
             margin: 6px 0;
             border-radius: 8px;
@@ -203,7 +199,7 @@
             z-index: 10; text-align: center;
         }
 
-        /* 行程看板滾動區域 */
+        /* 行程看板 */
         .itinerary-board {
             display: flex; gap: 12px; overflow-x: auto; padding: 0 15px;
             -webkit-overflow-scrolling: touch;
@@ -211,7 +207,7 @@
         .day-column {
             background: white; border-radius: 12px; overflow: hidden;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column;
-            min-width: 280px; width: 280px; flex-shrink: 0;
+            min-width: 290px; width: 290px; flex-shrink: 0;
         }
         .day-header { color: white; padding: 14px; text-align: center; }
         .day-column:nth-child(1) .day-header { background-color: #b35a38; } 
@@ -224,13 +220,13 @@
         .day-title { font-weight: bold; font-size: 16px; }
         .day-meta { font-size: 12px; opacity: 0.9; }
 
-        .drop-zone { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; background: #fff; min-height: 150px; }
-        .empty-placeholder { color: #adb5bd; font-size: 12px; text-align: center; margin: auto; padding: 20px 0; }
+        .drop-zone { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; background: #fff; min-height: 200px; }
+        .drop-zone.drag-over { background-color: #f1f3f5; border: 2px dashed #adb5bd; border-radius: 8px; }
+        .empty-placeholder { color: #adb5bd; font-size: 12px; text-align: center; margin: auto; padding: 20px 0; pointer-events: none; }
         
-        /* 移除按鈕 */
         .remove-btn {
             background: #ff3b30; color: white; border: none; border-radius: 4px;
-            padding: 6px 12px; font-size: 12px; align-self: flex-end; margin-top: 5px;
+            padding: 6px 12px; font-size: 12px; align-self: flex-end; margin-top: 5px; cursor: pointer;
         }
     </style>
 </head>
@@ -268,7 +264,7 @@
     <div class="itinerary-board"></div>
 
     <script>
-        // 核心景點資料庫
+        // 核心資料庫
         const spotsData = [
             { id: "spot1", name: "大濠公園", region: "Fukuoka", tag: "自然", color: "var(--color-nature)", query: "Ohori Park" },
             { id: "spot2", name: "天神地下街", region: "Fukuoka", tag: "購物", color: "var(--color-shopping)", query: "Tenjin Underground Shopping Mall" },
@@ -297,34 +293,58 @@
             { id: "spot21", name: "別府地獄溫泉", region: "Oita", tag: "溫泉", color: "var(--color-hotspring)", query: "Sea Hell, Beppu" }
         ];
 
-        // 核心大眾運輸矩陣
+        // 交通特例精準配對庫
         const transitMatrix = {
             "spot1_spot2": { time: 10, routes: [{ type: "🚇 地鐵機場線", detail: "10分", steps: "大濠公園直達天神。" }] },
             "spot2_spot6": { time: 15, routes: [{ type: "🚌 西鐵巴士", detail: "15分", steps: "天神至博多運河城。" }] },
             "spot6_spot3": { time: 8, routes: [{ type: "🚶 步行", detail: "8分", steps: "運河城步行直達櫛田神社。" }] },
             "spot2_spot7": { time: 25, routes: [{ type: "🚌 西鐵巴士", detail: "25分", steps: "天神搭乘W1/W2直達福岡塔。" }] },
-            "spot25_spot24": { time: 12, routes: [{ type: "🚇 地鐵機場線", detail: "12分", steps: "祇園站至中洲川端站。" }] },
-            "spot24_spot23": { time: 25, routes: [{ type: "🚌 西鐵巴士", detail: "25分", steps: "博多站/天神搭直達巴士至 LaLaport。" }] },
-            "spot2_spot16": { time: 40, routes: [{ type: "🚂 JR線", detail: "40分", steps: "天神/博多搭車至香椎轉JR香椎線至海之中道。" }] },
             "spot16_spot17": { time: 10, routes: [{ type: "🚶 步行", detail: "10分", steps: "海濱公園步行至海洋世界。" }] },
             "spot14_spot28": { time: 3, routes: [{ type: "🚶 步行", detail: "3分", steps: "夫妻石海灘步行即達海鮮餐廳。" }] },
             "spot28_spot15": { time: 12, routes: [{ type: "🚌 昭和巴士", detail: "12分", steps: "搭乘西之浦線巴士直達椰子樹鞦韆。" }] },
-            "spot2_spot14": { time: 55, routes: [{ type: "🚂 JR筑肥線 + 🚌 巴士", detail: "55分", steps: "天神搭地鐵至九大學研都市站，轉昭和巴士。" }] },
-            "spot2_spot26": { time: 30, routes: [{ type: "🚇 地鐵機場線", detail: "30分", steps: "天神搭至姪濱站，轉公車抵達壹岐神社。" }] },
-            "spot2_spot29": { time: 45, routes: [{ type: "🚄 新幹線 + 🚶 步行", detail: "45分", steps: "博多搭新幹線至小倉站，步行10分鐘至小倉城。" }] },
-            "spot29_spot30": { time: 35, routes: [{ type: "🚂 JR線 + 🚌 接駁車", detail: "35分", steps: "小倉搭JR至八幡站，轉接駁車至皿倉山纜車山麓站。" }] },
-            "spot29_spot22": { time: 15, routes: [{ type: "🚂 JR 鹿兒島本線", detail: "15分", steps: "小倉站直達門司港站。" }] },
-            "spot22_spot31": { time: 12, routes: [{ type: "🚌 西鐵巴士", detail: "12分", steps: "門司港站前搭巴士至和布刈神社。" }] },
-            "spot9_spot27": { time: 65, routes: [{ type: "🚂 JR 久大本線", detail: "65分", steps: "搭JR至筑後吉井站，轉計程車至浮羽神社。" }] },
-            "spot2_spot20": { time: 130, routes: [{ type: "🚂 特急由布院之森", detail: "130分", steps: "博多站搭乘觀光特急直達由布院。" }] },
-            "spot20_spot21": { time: 60, routes: [{ type: "🚌 觀光巴士 Yufurin", detail: "60分", steps: "由布院站前搭巴士直達別府海地獄。" }] }
+            "spot11_spot12": { time: 10, routes: [{ type: "🚶 步行/乘船", detail: "10分", steps: "柳川下船處步行抵達元祖本吉屋。" }] }
         };
 
-        const regionNames = { Fukuoka: "福岡市區 & 購物", Uminonakamichi: "海之中道水族", Dazaifu: "太宰府/柳川/浮羽", Itoshima: "系島海岸海鮮區", Kitakyushu: "北九州 (小倉/門司港)", Oita: "由布院/別府溫泉" };
+        // 💡 智能降級邏輯：當找不到精準卡片配對時，自動根據兩個景點所屬的區域（Region）進行動態模糊計算
+        function getSmartTransitData(spotA, spotB) {
+            const key1 = `${spotA.id}_${spotB.id}`;
+            const key2 = `${spotB.id}_${spotA.id}`;
+            
+            // 優先：找精準資料庫配對
+            if (transitMatrix[key1]) return transitMatrix[key1];
+            if (transitMatrix[key2]) return transitMatrix[key2];
+
+            // 次之：同區域內部的動態合理計算
+            if (spotA.region === spotB.region) {
+                if (spotA.region === "Fukuoka") {
+                    return { time: 12, routes: [{ type: "🚇 福岡市營地鐵 / 🚌 市區巴士", detail: "約 12-15 分鐘", steps: `由 ${spotA.name} 乘市區大眾運輸工具直達 ${spotB.name}。` }] };
+                }
+                if (spotA.region === "Dazaifu") {
+                    return { time: 20, routes: [{ type: "🚂 西鐵大牟田線 / 🚶 步行", detail: "約 20 分鐘", steps: `在太宰府/柳川地區內移動前往 ${spotB.name}。` }] };
+                }
+                if (spotA.region === "Itoshima") {
+                    return { time: 15, routes: [{ type: "🚌 昭和巴士 / 🚗 計程車", detail: "約 15 分鐘", steps: `沿著系島海岸線移動至 ${spotB.name}。` }] };
+                }
+                if (spotA.region === "Kitakyushu") {
+                    return { time: 20, routes: [{ type: "🚂 JR 鹿兒島本線", detail: "約 20 分鐘", steps: `由門司港/小倉地區大眾運輸移動至 ${spotB.name}。` }] };
+                }
+            }
+
+            // 最後：跨大區域大眾運輸（自動判斷起訖點生成對應文字，不再死板！）
+            return {
+                time: 50,
+                routes: [{ type: "🚂 JR 特急 / 🚄 新幹線線路", detail: "約 45-60 分鐘", steps: `從 [${regionNames[spotA.region]}] 的 ${spotA.name} 出發，搭乘 JR 或西鐵電車跨區前往 [${regionNames[spotB.region]}] 的 ${spotB.name}。` }]
+            };
+        }
+
+        const regionNames = { Fukuoka: "福岡市區", Uminonakamichi: "海之中道", Dazaifu: "太宰府/柳川", Itoshima: "系島海岸", Kitakyushu: "北九州", Oita: "由布院/別府" };
         const daysConfig = [{ day: 1, date: "9月26日" }, { day: 2, date: "9月27日" }, { day: 3, date: "9月28日" }, { day: 4, date: "9月29日" }, { day: 5, date: "9月30日" }, { day: 6, date: "10月1日" }, { day: 7, date: "10月2日" }];
 
         let assignedSpots = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
         let currentSelectedTag = '全部';
+
+        let dragSourceDay = null;
+        let dragSourceIndex = null;
 
         function focusMapToSpot(spotName, queryStr) {
             document.getElementById('google-map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(queryStr)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
@@ -347,7 +367,7 @@
                         <div class="day-title">Day ${d.day}</div>
                         <div class="day-meta">${d.date} <span class="time-display" id="time-day-${d.day}">⏱️ 0 小時</span></div>
                     </div>
-                    <div class="drop-zone" id="zone-day-${d.day}">
+                    <div class="drop-zone" id="zone-day-${d.day}" data-day="${d.day}" ondragover="allowDrop(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                         <div class="empty-placeholder">尚未加入行程</div>
                     </div>
                 `;
@@ -356,7 +376,6 @@
             });
         }
 
-        // 🔍 修改：結合關鍵字搜尋與分類標籤的過濾器
         function handleSearchAndFilter() {
             const keyword = document.getElementById('search-box').value.toLowerCase().trim();
             const panel = document.getElementById('spots-panel');
@@ -366,10 +385,7 @@
             let hasResults = false;
 
             spotsData.forEach(spot => {
-                // 檢查分類標籤是否符合
                 const matchesTag = (currentSelectedTag === '全部' || spot.tag === currentSelectedTag);
-                
-                // 檢查搜尋關鍵字是否符合 (比對名稱、英文Query、區域或標籤)
                 const matchesKeyword = !keyword || 
                                        spot.name.toLowerCase().includes(keyword) || 
                                        spot.query.toLowerCase().includes(keyword) ||
@@ -383,7 +399,7 @@
             });
 
             if (!hasResults) {
-                panel.innerHTML = `<div style="color: #8e8e93; text-align: center; padding: 30px 0; font-size: 14px;">❌ 找不到符合的景點，換個關鍵字試試看吧！</div>`;
+                panel.innerHTML = `<div style="color: #8e8e93; text-align: center; padding: 30px 0; font-size: 14px;">❌ 找不到符合的景點</div>`;
                 return;
             }
 
@@ -398,6 +414,7 @@
                 groups[region].forEach(spot => {
                     const card = document.createElement('div');
                     card.className = 'spot-card';
+                    card.style.cursor = 'default';
                     card.innerHTML = `
                         <div class="spot-header" onclick="focusMapToSpot('${spot.name}', '${spot.query}')">
                             <span class="spot-name">${spot.name}</span>
@@ -437,6 +454,73 @@
             renderDaySchedule(day);
         }
 
+        // --- ⚙️ 拖曳控制 ---
+        function handleDragStart(event, day, index) {
+            dragSourceDay = day;
+            dragSourceIndex = index;
+            event.currentTarget.classList.add('dragging');
+            event.dataTransfer.effectAllowed = "move";
+        }
+
+        function handleDragEnd(event) {
+            event.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+            const zone = event.currentTarget;
+            zone.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            const zone = event.currentTarget;
+            zone.classList.remove('drag-over');
+            
+            const targetDay = parseInt(zone.getAttribute('data-day'));
+            if (!dragSourceDay || dragSourceIndex === null) return;
+
+            const draggedSpotId = assignedSpots[dragSourceDay][dragSourceIndex];
+            const afterElement = getDragAfterElement(zone, event.clientY);
+            
+            assignedSpots[dragSourceDay].splice(dragSourceIndex, 1);
+
+            if (afterElement == null) {
+                assignedSpots[targetDay].push(draggedSpotId);
+            } else {
+                const targetIndex = parseInt(afterElement.getAttribute('data-index'));
+                assignedSpots[targetDay].splice(targetIndex, 0, draggedSpotId);
+            }
+
+            const sourceDayBuffer = dragSourceDay;
+            dragSourceDay = null;
+            dragSourceIndex = null;
+
+            renderDaySchedule(sourceDayBuffer);
+            if (sourceDayBuffer !== targetDay) {
+                renderDaySchedule(targetDay);
+            }
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.spot-card:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- ⚙️ 行程渲染與智慧交通核心計算區 ---
         function renderDaySchedule(day) {
             const zone = document.getElementById(`zone-day-${day}`);
             const spotIds = assignedSpots[day];
@@ -456,6 +540,12 @@
 
                 const card = document.createElement('div');
                 card.className = 'spot-card';
+                card.setAttribute('draggable', 'true');
+                card.setAttribute('data-index', index);
+                
+                card.addEventListener('dragstart', (e) => handleDragStart(e, day, index));
+                card.addEventListener('dragend', handleDragEnd);
+
                 card.innerHTML = `
                     <div class="spot-header" onclick="focusMapToSpot('${spot.name}', '${spot.query}')">
                         <span class="spot-name">${spot.name}</span>
@@ -465,41 +555,43 @@
                 `;
                 zone.appendChild(card);
 
+                // 計算下一個節點
                 if (index < spotIds.length - 1) {
                     const nextSpotId = spotIds[index + 1];
                     const nextSpot = spotsData.find(s => s.id === nextSpotId);
                     
-                    const key = `${id}_${nextSpotId}`;
-                    const keyReverse = `${nextSpotId}_${id}`;
-                    const transitData = transitMatrix[key] || transitMatrix[keyReverse] || {
-                        time: 45,
-                        routes: [{ type: "🚌 大眾運輸跨區", detail: "約 45-60 分鐘", steps: "搭乘特急、西鐵巴士或地鐵前往下一點。" }]
-                    };
+                    if (nextSpot) {
+                        // ⚡ 引入智慧降級配對函數
+                        const transitData = getSmartTransitData(spot, nextSpot);
+                        totalMinutes += transitData.time;
 
-                    totalMinutes += transitData.time;
+                        const transitContainer = document.createElement('div');
+                        transitContainer.className = 'transit-container';
+                        transitContainer.innerHTML = `
+                            <div class="transit-time-bar" id="bar-${day}-${index}">🚌 最短交通: ${transitData.time} 分鐘</div>
+                            <div class="transit-details" id="details-${day}-${index}">
+                                ${transitData.routes.map(r => `
+                                    <span class="route-type">${r.type} (${r.detail})</span>
+                                    <div class="route-steps">${r.steps}</div>
+                                `).join('')}
+                            </div>
+                        `;
+                        
+                        zone.appendChild(transitContainer);
 
-                    const transitContainer = document.createElement('div');
-                    transitContainer.className = 'transit-container';
-                    transitContainer.innerHTML = `
-                        <div class="transit-time-bar" id="bar-${day}-${index}">🚌 最短交通: ${transitData.time} 分鐘</div>
-                        <div class="transit-details" id="details-${day}-${index}">
-                            ${transitData.routes.map(r => `
-                                <span class="route-type">${r.type} (${r.detail})</span>
-                                <div class="route-steps">${r.steps}</div>
-                            `).join('')}
-                        </div>
-                    `;
-                    
-                    zone.appendChild(transitContainer);
-
-                    setTimeout(() => {
-                        document.getElementById(`bar-${day}-${index}`).addEventListener('click', function() {
-                            const details = document.getElementById(`details-${day}-${index}`);
-                            const isOpen = details.style.display === 'block';
-                            details.style.display = isOpen ? 'none' : 'block';
-                            showTransitDirection(spot.name, nextSpot.name, spot.query, nextSpot.query);
-                        });
-                    }, 50);
+                        // 立即為當前的動態節點綁定點擊事件
+                        setTimeout(() => {
+                            const currentBar = document.getElementById(`bar-${day}-${index}`);
+                            if (currentBar) {
+                                currentBar.onclick = function() {
+                                    const details = document.getElementById(`details-${day}-${index}`);
+                                    const isOpen = details.style.display === 'block';
+                                    details.style.display = isOpen ? 'none' : 'block';
+                                    showTransitDirection(spot.name, nextSpot.name, spot.query, nextSpot.query);
+                                };
+                            }
+                        }, 20);
+                    }
                 }
             });
 
@@ -508,7 +600,7 @@
 
         window.onload = function() {
             initItineraryBoard();
-            handleSearchAndFilter(); // 初始化載入全部景點
+            handleSearchAndFilter();
         };
     </script>
 </body>
